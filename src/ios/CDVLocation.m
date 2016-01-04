@@ -69,10 +69,10 @@
             self.locationManager = [[CLLocationManager alloc] init];
 
             //Edited by kingalione: START
-            if (SYSTEM_VERSION_GREATER_THAN_OR_EQUAL_TO(@"9.0")) {
-                self.locationManager.pausesLocationUpdatesAutomatically = NO;
-				self.locationManager.allowsBackgroundLocationUpdates = YES;
-            }
+            //if (SYSTEM_VERSION_GREATER_THAN_OR_EQUAL_TO(@"9.0")) {
+            self.locationManager.pausesLocationUpdatesAutomatically = NO;
+			self.locationManager.allowsBackgroundLocationUpdates = YES;
+            //}
             //Edited by kingalione: END
 
             self.locationManager.delegate = self; // Tells the location manager to send updates to this object
