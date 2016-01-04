@@ -70,7 +70,8 @@
 
             //Edited by kingalione: START
             if (SYSTEM_VERSION_GREATER_THAN_OR_EQUAL_TO(@"9.0")) {
-                self.locationManager.allowsBackgroundLocationUpdates = YES;
+                self.locationManager.pausesLocationUpdatesAutomatically = NO;
+				self.locationManager.allowsBackgroundLocationUpdates = YES;
             }
             //Edited by kingalione: END
 
