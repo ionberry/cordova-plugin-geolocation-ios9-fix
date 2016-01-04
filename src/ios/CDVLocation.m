@@ -70,8 +70,7 @@
 
             //Edited by kingalione: START
             //if (SYSTEM_VERSION_GREATER_THAN_OR_EQUAL_TO(@"9.0")) {
-            self.locationManager.pausesLocationUpdatesAutomatically = NO;
-			self.locationManager.allowsBackgroundLocationUpdates = YES;
+            
             //}
             //Edited by kingalione: END
 
@@ -158,6 +157,8 @@
     // first stop, and then start the updating to ensure we get at least one
     // update, even if our location did not change.
     [self.locationManager stopUpdatingLocation];
+    locationManager.pausesLocationUpdatesAutomatically = NO;
+	locationManager.allowsBackgroundLocationUpdates = YES;
     [self.locationManager startUpdatingLocation];
     __locationStarted = YES;
     if (enableHighAccuracy) {
