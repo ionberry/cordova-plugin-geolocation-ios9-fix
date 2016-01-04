@@ -18,7 +18,6 @@
  */
 
 #import "CDVLocation.h"
-#import <Cordova/NSArray+Comparisons.h>
 
 #pragma mark Constants
 
@@ -27,14 +26,6 @@
 #define kPGLocationForcePromptKey @"forcePrompt"
 #define kPGLocationDistanceFilterKey @"distanceFilter"
 #define kPGLocationFrequencyKey @"frequency"
-
-//Edited by kingalione: START
-#define SYSTEM_VERSION_EQUAL_TO(v)                  ([[[UIDevice currentDevice] systemVersion] compare:v options:NSNumericSearch] == NSOrderedSame)
-#define SYSTEM_VERSION_GREATER_THAN(v)              ([[[UIDevice currentDevice] systemVersion] compare:v options:NSNumericSearch] == NSOrderedDescending)
-#define SYSTEM_VERSION_GREATER_THAN_OR_EQUAL_TO(v)  ([[[UIDevice currentDevice] systemVersion] compare:v options:NSNumericSearch] != NSOrderedAscending)
-#define SYSTEM_VERSION_LESS_THAN(v)                 ([[[UIDevice currentDevice] systemVersion] compare:v options:NSNumericSearch] == NSOrderedAscending)
-#define SYSTEM_VERSION_LESS_THAN_OR_EQUAL_TO(v)     ([[[UIDevice currentDevice] systemVersion] compare:v options:NSNumericSearch] != NSOrderedDescending)
-//Edited by kingalione: END
 
 #pragma mark -
 #pragma mark Categories
@@ -62,25 +53,14 @@
 
 @synthesize locationManager, locationData;
 
-    - (CDVPlugin*)initWithWebView:(UIWebView*)theWebView
-    {
-        self = (CDVLocation*)[super initWithWebView:(UIWebView*)theWebView];
-        if (self) {
-            self.locationManager = [[CLLocationManager alloc] init];
-
-            //Edited by kingalione: START
-            //if (SYSTEM_VERSION_GREATER_THAN_OR_EQUAL_TO(@"9.0")) {
-            
-            //}
-            //Edited by kingalione: END
-
-            self.locationManager.delegate = self; // Tells the location manager to send updates to this object
-            __locationStarted = NO;
-            __highAccuracyEnabled = NO;
-            self.locationData = nil;
-        }
-        return self;
-    }
+- (void)pluginInitialize
+{
+    self.locationManager = [[CLLocationManager alloc] init];
+    self.locationManager.delegate = self; // Tells the location manager to send updates to this object
+    __locationStarted = NO;
+    __highAccuracyEnabled = NO;
+    self.locationData = nil;
+}
 
 - (BOOL)isAuthorized
 {
@@ -114,7 +94,7 @@
     }
 }
 
-- (void)startLocation:(BOOL)enableHighAccuracy
+- (void)startLocation:(BOOL)enableHighAccuracy background:(BOOL)background
 {
     if (![self isLocationServicesEnabled]) {
         [self returnLocationError:PERMISSIONDENIED withMessage:@"Location services are not enabled."];
@@ -153,14 +133,6 @@
     }
 #endif
 
-    // Tell the location manager to start notifying us of location updates. We
-    // first stop, and then start the updating to ensure we get at least one
-    // update, even if our location did not change.
-    [self.locationManager stopUpdatingLocation];
-    locationManager.pausesLocationUpdatesAutomatically = NO;
-	locationManager.allowsBackgroundLocationUpdates = YES;
-    [self.locationManager startUpdatingLocation];
-    __locationStarted = YES;
     if (enableHighAccuracy) {
         __highAccuracyEnabled = YES;
         // Set distance filter to 5 for a high accuracy. Setting it to "kCLDistanceFilterNone" could provide a
@@ -174,6 +146,34 @@
         self.locationManager.distanceFilter = 10;
         self.locationManager.desiredAccuracy = kCLLocationAccuracyNearestTenMeters;
     }
+
+    if (background) {
+        self.locationManager.allowsBackgroundLocationUpdates = YES;
+        //self.locationManager.pausesLocationUpdatesAutomatically = NO;
+        
+        if (CLLocationManager.significantLocationChangeMonitoringAvailable) {
+            [self.locationManager stopMonitoringSignificantLocationChanges];
+            [self.locationManager startMonitoringSignificantLocationChanges];
+        }
+    } else {
+        // Tell the location manager to start notifying us of location updates. We
+        // first stop, and then start the updating to ensure we get at least one
+        // update, even if our location did not change.
+        
+        [self.locationManager stopUpdatingLocation];
+        [self.locationManager startUpdatingLocation];
+    }
+
+
+//    if([CLLocationManager deferredLocationUpdatesAvailable]) {
+//        self.locationManager.distanceFilter = kCLDistanceFilterNone;
+//        self.locationManager.desiredAccuracy = kCLLocationAccuracyBest;
+//        [self.locationManager disallowDeferredLocationUpdates];
+//        [self.locationManager allowDeferredLocationUpdatesUntilTraveled:CLLocationDistanceMax timeout:60];//60秒
+//    }
+
+
+    __locationStarted = YES;
 }
 
 - (void)_stopLocation
@@ -184,18 +184,33 @@
         }
 
         [self.locationManager stopUpdatingLocation];
+        [self.locationManager stopMonitoringSignificantLocationChanges];
         __locationStarted = NO;
         __highAccuracyEnabled = NO;
     }
 }
 
-- (void)locationManager:(CLLocationManager*)manager
-    didUpdateToLocation:(CLLocation*)newLocation
-           fromLocation:(CLLocation*)oldLocation
+- (void)didUpdateLocation:(CLLocation*)location
 {
-    CDVLocationData* cData = self.locationData;
+    BOOL isInBackground = NO;
+    if ([UIApplication sharedApplication].applicationState == UIApplicationStateBackground)
+    {
+        isInBackground = YES;
+    }
+    
+    UIBackgroundTaskIdentifier bgTask = UIBackgroundTaskInvalid;
+    if (isInBackground)
+    {
+        bgTask = [[UIApplication sharedApplication]
+                  beginBackgroundTaskWithExpirationHandler:
+                  ^{
+                      [[UIApplication sharedApplication] endBackgroundTask:bgTask];
+                  }];
+    }
 
-    cData.locationInfo = newLocation;
+    CDVLocationData* cData = self.locationData;
+    cData.locationInfo = location;
+
     if (self.locationData.locationCallbacks.count > 0) {
         for (NSString* callbackId in self.locationData.locationCallbacks) {
             [self returnLocationInfo:callbackId andKeepCallback:NO];
@@ -211,6 +226,29 @@
         // No callbacks waiting on us anymore, turn off listening.
         [self _stopLocation];
     }
+
+    if (isInBackground)
+    {
+        if (bgTask != UIBackgroundTaskInvalid)
+        {
+            [[UIApplication sharedApplication] endBackgroundTask:bgTask];
+            bgTask = UIBackgroundTaskInvalid;
+        }
+    }
+}
+
+- (void)locationManager:(CLLocationManager*)manager
+    didUpdateToLocation:(CLLocation*)newLocation
+           fromLocation:(CLLocation*)oldLocation
+{
+    [self didUpdateLocation:newLocation];
+}
+
+- (void)locationManager:(CLLocationManager*)manager
+     didUpdateLocations:(NSArray*)locations
+{
+    CLLocation* newLocation = [locations lastObject];
+    [self didUpdateLocation:newLocation];
 }
 
 - (void)getLocation:(CDVInvokedUrlCommand*)command
@@ -239,7 +277,7 @@
                 [lData.locationCallbacks addObject:callbackId];
             }
             // Tell the location manager to start notifying us of heading updates
-            [self startLocation:enableHighAccuracy];
+            [self startLocation:enableHighAccuracy background:NO];
         } else {
             [self returnLocationInfo:callbackId andKeepCallback:NO];
         }
@@ -273,7 +311,7 @@
     } else {
         if (!__locationStarted || (__highAccuracyEnabled != enableHighAccuracy)) {
             // Tell the location manager to start notifying us of location updates
-            [self startLocation:enableHighAccuracy];
+            [self startLocation:enableHighAccuracy background:YES];
         }
     }
 }
@@ -370,7 +408,7 @@
 -(void)locationManager:(CLLocationManager *)manager didChangeAuthorizationStatus:(CLAuthorizationStatus)status
 {
     if(!__locationStarted){
-        [self startLocation:__highAccuracyEnabled];
+        [self startLocation:__highAccuracyEnabled background:NO];
     }
 }
 
