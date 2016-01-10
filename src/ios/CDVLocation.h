@@ -57,14 +57,11 @@ typedef NSUInteger CDVLocationStatus;
 - (void)clearWatch:(CDVInvokedUrlCommand*)command;
 - (void)returnLocationInfo:(NSString*)callbackId andKeepCallback:(BOOL)keepCallback;
 - (void)returnLocationError:(NSUInteger)errorCode withMessage:(NSString*)message;
-- (void)startLocation:(BOOL)enableHighAccuracy background:(BOOL)background;
+- (void)startLocation:(BOOL)enableHighAccuracy;
 
 - (void)locationManager:(CLLocationManager*)manager
     didUpdateToLocation:(CLLocation*)newLocation
            fromLocation:(CLLocation*)oldLocation;
-
-- (void)locationManager:(CLLocationManager*)manager
-	didUpdateLocations:(NSArray*)locations;
 
 - (void)locationManager:(CLLocationManager*)manager
        didFailWithError:(NSError*)error;
