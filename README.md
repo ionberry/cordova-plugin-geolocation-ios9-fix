@@ -1,4 +1,5 @@
 This plugin is a fork of https://github.com/apache/cordova-plugin-geolocation for the purpose of fixing background geolocation issues in iOS9.
+It should be used through npm, the package id is: cordova-plugin-geolocation-ios9-fix
 
 <!--
 # license: Licensed to the Apache Software Foundation (ASF) under one
