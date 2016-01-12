@@ -1,3 +1,5 @@
+This plugin is a fork of https://github.com/apache/cordova-plugin-geolocation for the purpose of fixing background geolocation issues in iOS9.
+
 <!--
 # license: Licensed to the Apache Software Foundation (ASF) under one
 #         or more contributor license agreements.  See the NOTICE file
